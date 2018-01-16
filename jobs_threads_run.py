@@ -17,6 +17,8 @@ class JobsThreadsRun(object):
             raise ValueError("func 必须是一个函数对象用于执行job: {}".format(type(func)))
         self.jobs = jobs
         self.unfinish_jobs = copy.deepcopy(self.jobs)
+        self.error_jobs = []
+        self.success_jobs = []
         self.run_func = func
         self.thread_num = num_threads
         self.__lock = threading.Lock()
@@ -25,13 +27,13 @@ class JobsThreadsRun(object):
     def start(self):
         for i in self._get_threads():
             i.start()
-    
+
     def _get_threads(self):
         for i in range(self.thread_num):
             temp = Thread(target=self._run_threads)
             self._current_threads.append(temp)
         return self._current_threads
-    
+
     def _run_threads(self):
         while True:
             self.__lock.acquire()
@@ -40,5 +42,8 @@ class JobsThreadsRun(object):
                 break
             job = self.unfinish_jobs.pop()
             self.__lock.release()
-            self.run_func(job)
-            
+            try:
+                self.run_func(job)
+                self.success_jobs.append(job)
+            except Exception as e:
+                self.error_jobs.append((job, e))
